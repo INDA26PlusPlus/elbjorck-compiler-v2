@@ -1,0 +1,16 @@
+Block main {
+    push(15);
+    run(fib);
+}
+
+Block fib {
+    push(10);
+    push(0);
+    
+    add(1, pop(0));
+    if (10, look(1), ipsum);
+}
+
+Block ipsum {
+    push(67);
+}

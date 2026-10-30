@@ -1,0 +1,15 @@
+if (statement) => Block_name(args);
+
+Block block_name (args) {
+
+}
+
+Run => block_name()
+
+koden körs från
+Block main () {
+
+}
+
+
+
