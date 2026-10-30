@@ -102,6 +102,14 @@ fn if_command(
                     break;
                 }
             }
+            i += 1;
+        }
+        if token.1 == "pop" {
+            let popped_value = pop(&p_tokens, memory);
+            values.push(popped_value);
+        } else {
+            let looked_value = look(&p_tokens, memory);
+            values.push(looked_value);
         }
         i += 1;
     }
