@@ -1,11 +1,11 @@
 use std::{char, fs::read_to_string, ops::Add, range};
 
 fn main() {
-    run_code("src/code.txt");
+    run_code("src/fib.txt");
 }
 
 fn run_code(file_name: &str) {
-    let mut memory: Vec<usize> = Vec::new();
+    let mut memory: Vec<isize> = Vec::new();
     let code: Vec<String> = read_lines(file_name);
     let tokens: Vec<(String, String)> = tokenize_lines(code);
     let tree = create_syntax_tree(tokens.clone());
@@ -21,7 +21,7 @@ fn run_code(file_name: &str) {
     println!(" }}");
 }
 
-fn run_block(tree: &Vec<Vec<(String, String)>>, memory: &mut Vec<usize>, identifier: &str) {
+fn run_block(tree: &Vec<Vec<(String, String)>>, memory: &mut Vec<isize>, identifier: &str) {
     //println!("Running block {}", identifier);
     for block in tree {
         let mut line: Vec<(String, String)> = Vec::new();
@@ -49,7 +49,7 @@ fn run_block(tree: &Vec<Vec<(String, String)>>, memory: &mut Vec<usize>, identif
 fn run_line(
     tree: &Vec<Vec<(String, String)>>,
     line: &Vec<(String, String)>,
-    memory: &mut Vec<usize>,
+    memory: &mut Vec<isize>,
 ) {
     println!("Running line");
     match line.get(0).unwrap().1.as_str() {
@@ -66,7 +66,10 @@ fn run_line(
             run(tree, line, memory);
         }
         "if" => {
-            if_command(tree, line, memory);
+            if_command(tree, line, memory, false);
+        }
+        "ifnot" => {
+            if_command(tree, line, memory, true);
         }
         "look" => {
             look(line, memory);
@@ -79,15 +82,16 @@ fn run_line(
 fn if_command(
     tree: &Vec<Vec<(String, String)>>,
     line: &Vec<(String, String)>,
-    memory: &mut Vec<usize>,
+    memory: &mut Vec<isize>,
+    if_not: bool,
 ) {
     let mut identifier: Vec<(String, String)> = Vec::new();
-    let mut values: Vec<usize> = Vec::new();
+    let mut values: Vec<isize> = Vec::new();
     let mut i = 0;
     while i < line.len() {
         let token = line.get(i).unwrap();
         if token.0 == "value" {
-            values.push(token.1.parse::<usize>().unwrap());
+            values.push(token.1.parse::<isize>().unwrap());
         }
         if token.0 == "identifier" {
             identifier.push(token.clone());
@@ -101,29 +105,46 @@ fn if_command(
                 } else {
                     break;
                 }
+                i += 1;
             }
-            i += 1;
-        }
-        if token.1 == "pop" {
-            let popped_value = pop(&p_tokens, memory);
-            values.push(popped_value);
-        } else {
-            let looked_value = look(&p_tokens, memory);
-            values.push(looked_value);
+            if token.1 == "pop" {
+                let popped_value = pop(&p_tokens, memory);
+                values.push(popped_value);
+            } else {
+                let looked_value = look(&p_tokens, memory);
+                println!("Adding {} to values", looked_value.clone());
+                values.push(looked_value);
+            }
         }
         i += 1;
     }
     for i in 0..values.len() - 1 {
+        println!(
+            "Checking if for values: {} {} and if not is {}",
+            values.get(i).unwrap(),
+            values.get(i + 1).unwrap(),
+            if_not,
+            
+        );
         if values.get(i).unwrap() == values.get(i + 1).unwrap() {
+            println!("Values equal");
+            if if_not {
+                return;    
+            }
             continue;
         } else {
+            println!("Values dont equal");
+            if if_not {
+                continue;
+            }
             return;
         }
     }
+    println!("running block");
     run(tree, &identifier, memory);
 }
 
-fn run(tree: &Vec<Vec<(String, String)>>, tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) {
+fn run(tree: &Vec<Vec<(String, String)>>, tokens: &Vec<(String, String)>, memory: &mut Vec<isize>) {
     for token in tokens {
         if token.0 == "identifier" {
             run_block(tree, memory, token.1.as_str());
@@ -132,7 +153,7 @@ fn run(tree: &Vec<Vec<(String, String)>>, tokens: &Vec<(String, String)>, memory
     }
 }
 
-fn add(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) {
+fn add(tokens: &Vec<(String, String)>, memory: &mut Vec<isize>) {
     let mut values: [usize; 2] = [0, 1];
     let mut index: usize = 0;
     let mut i = 0;
@@ -153,10 +174,10 @@ fn add(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) {
                 }
             }
             if token.1 == "pop" {
-                let popped_value = pop(&p_tokens, memory);
+                let popped_value = usize::try_from(pop(&p_tokens, memory)).unwrap();
                 values[index] = popped_value;
             } else {
-                let looked_value = look(&p_tokens, memory);
+                let looked_value = usize::try_from(look(&p_tokens, memory)).unwrap();
                 values[index] = looked_value;
             }
             index += 1;
@@ -168,18 +189,22 @@ fn add(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) {
 
     println!(
         "Sum {}",
-        memory.get(memory.len() - 1 - values[0]).unwrap().clone() + memory.get(memory.len() - 1 - values[1]).unwrap().clone()
+        memory.get(memory.len() - 1 - values[0]).unwrap().clone()
+            + memory.get(memory.len() - 1 - values[1]).unwrap().clone()
     );
-    memory.push(memory.get(memory.len() - 1 - values[0]).unwrap().clone() + memory.get(memory.len() - 1 - values[1]).unwrap().clone());
+    memory.push(
+        memory.get(memory.len() - 1 - values[0]).unwrap().clone()
+            + memory.get(memory.len() - 1 - values[1]).unwrap().clone(),
+    );
 }
 
-fn push(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) {
+fn push(tokens: &Vec<(String, String)>, memory: &mut Vec<isize>) {
     //println!("running push command");
     for i in 0..tokens.len() {
         let token = tokens.get(i).unwrap();
         if token.0 == "value" {
             println!("pushing token to memory: {}", token.1);
-            memory.push(token.1.parse::<usize>().unwrap());
+            memory.push(token.1.parse::<isize>().unwrap());
             return;
         }
         if token.1 == "pop" || token.1 == "look" {
@@ -199,8 +224,8 @@ fn push(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) {
     }
 }
 
-fn pop(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) -> usize {
-    let return_value: usize;
+fn pop(tokens: &Vec<(String, String)>, memory: &mut Vec<isize>) -> isize {
+    let return_value: isize;
     for token in tokens {
         if token.0 == "value" {
             return_value = memory
@@ -216,16 +241,22 @@ fn pop(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) -> usize {
     return return_value;
 }
 
-fn look(tokens: &Vec<(String, String)>, memory: &mut Vec<usize>) -> usize {
+fn look(tokens: &Vec<(String, String)>, memory: &mut Vec<isize>) -> isize {
     println!("Running look");
-    let return_value: usize;
+    let return_value: isize;
     for token in tokens {
         if token.0 == "value" {
-            //println!("looking at specified value {} which looks at index {} of memory {}", token.1, memory.len() - 1 - token.1.parse::<usize>().unwrap(), memory.len());
+            println!(
+                "looking at specified value {} which looks at index {} of memory {}",
+                token.1,
+                memory.len() - 1 - token.1.parse::<usize>().unwrap(),
+                memory.len()
+            );
             return_value = memory
                 .get(memory.len() - 1 - token.1.parse::<usize>().unwrap())
                 .unwrap()
                 .clone();
+            println!("The value is: {}", return_value.clone());
             return return_value;
         }
     }
@@ -376,6 +407,9 @@ fn identify_token_type(token: String) -> (String, String) {
             token_type = ("command".to_string(), token);
         }
         "if" => {
+            token_type = ("command".to_string(), token);
+        }
+        "ifnot" => {
             token_type = ("command".to_string(), token);
         }
         "look" => {
