@@ -1,1 +1,17 @@
+Block main {
+    push(5);
+    run(fib);
+    pop();
+}
 
+Block fib {
+    push(-1);
+    add();
+    pop(1);
+    ifnot(1, look(), fib);
+    if(1, look(), pushtwo);
+    add();
+}
+Block pushtwo {
+    push(2);
+}
